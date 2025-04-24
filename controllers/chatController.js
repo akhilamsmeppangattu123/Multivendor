@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Message = require("../models/chatModel");
 const chatController = {
     getCustomers: asyncHandler(async (req, res) => {
-        const chatHistory = await Message.find({ receiverId: req.user.id }).populate("senderId", "id username");
+        const chatHistory = await Message.find({ receiverId: req.user.id }).populate("senderId");
         const uniqueCustomers = new Map();
     
         chatHistory.forEach(message => {

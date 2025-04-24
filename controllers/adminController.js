@@ -42,11 +42,11 @@ else{
 
     getUsers:asyncHandler(async (req, res) => {
       
-      const users = await User.find({role:"vendor"})
-      if (users.length === 0) {
-        return res.status(404).json({ message: "No users found" });
-      }
-      res.status(200).send(users);
+      const vendors = await Vendor.find().populate("user");
+      // if (users.length === 0) {
+      //   return res.status(404).json({ message: "No users found" });
+      // }
+      res.status(200).send(vendors);
     }),
 
     getDetails: asyncHandler(async (req, res) => {

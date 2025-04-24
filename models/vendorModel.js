@@ -31,11 +31,6 @@ const VendorSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
-    accountStatus: { 
-        type: String, 
-        enum: ["pending", "approved", "rejected"], 
-        default: "pending" 
-    },
     profilePic: {
         type: String,
         default: null

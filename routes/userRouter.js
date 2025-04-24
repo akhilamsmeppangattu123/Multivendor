@@ -10,11 +10,8 @@ userRoutes.put("/edit", userAuthentication,userController.profile);
 userRoutes.put("/password", userAuthentication,userController.changePassword);
 userRoutes.delete("/logout", userController.logout);
 userRoutes.get("/view", userAuthentication,userController.getUserProfile);
-
-userRoutes.post('/upload-profile-pic', 
-    userAuthentication, 
-    upload.single('profilePic'), 
-    userController.uploadProfilePic
-);
+userRoutes.post("/forgot", userController.forgotPassword);
+userRoutes.post("/reset", userController.resetPassword);
+// userRoutes.post('/upload-profile-pic', userAuthentication, upload.single('profilePic'), userController.uploadProfilePic);
 
 module.exports = userRoutes;

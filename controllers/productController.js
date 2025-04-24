@@ -2,6 +2,8 @@ const Product = require("../models/productModel");
 const asyncHandler = require("express-async-handler");
 const Vendor = require("../models/vendorModel");
 const cloudinary = require('cloudinary').v2;
+const Notification = require("../models/notificationModel");
+const stockUpdateModel = require("../models/stockUpdateModel");
 
 const productController = {
     createProduct: asyncHandler(async (req, res) => {
@@ -130,7 +132,7 @@ const productController = {
     getProductById: asyncHandler(async (req, res) => {
         try {
             const product = await Product.findById(req.params.id)
-                .populate("vendor", "name"); // Only populate vendor name
+                .populate("vendor"); // Only populate vendor name
 
             if (!product) {
                 return res.status(404).json({ 
@@ -170,53 +172,74 @@ const productController = {
     updateProduct: asyncHandler(async (req, res) => {
         console.log(req.body);
         
-        try {
-            const {id,name,description,category,subCategory,volume,price,minQuantity,discount,stock}=req.body
-            const product = await Product.findById(id);
-            console.log('incoming:',id,name,description,category,subCategory,volume,price,minQuantity,discount,stock);
-            
-            if (!product) {
-                return res.status(404).json({ message: "Product not found" });
-            }
-    
-                                    product.name = name || product.name;
-                                    product.description = description || product.description;
-                                    product.category = category || product.category;
-                                    product.subCategory = subCategory || product.subCategory;
-                                    product.volume = volume || product.volume;
-                                    product.price = price || product.price;
-                                    product.minQuantity = minQuantity || product.minQuantity;
-                                    product.discount = discount || product.discount;
-                                    product.stock = stock || product.stock;
-            
-    
-            // Handle image uploads
-            if (req.files && req.files.length > 0) {
-                const imageUrls = await Promise.all(
-                    req.files.map(async (file) => {
-                        try {
-                            const result = await cloudinary.uploader.upload(file.path);
-                            return result.secure_url;
-                        } catch (uploadError) {
-                            console.error("Error uploading image:", uploadError);
-                            return null;
-                        }
-                    })
-                ).then(results => results.filter(url => url !== null));
-    
-                if (imageUrls.length > 0) {
-                    product.images = [...product.images, ...imageUrls];
-                }
-            }
-    
-            const updatedProduct = await product.save();
-            console.log('updated',updatedProduct);
-            
-            res.json(updatedProduct);
-        } catch (error) {
-            console.error("Error updating product:", error);
-            res.status(500).json({ message: "Server error" });
+    try {
+        const { id, name, description, category, subCategory, volume, price, minQuantity, discount, stock } = req.body;
+        const product = await Product.findById(id);
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
         }
+
+        // Store current stock for comparison
+        const currentStock = product.stock;
+
+        // Update product fields
+        product.name = name || product.name;
+        product.description = description || product.description;
+        product.category = category || product.category;
+        product.subCategory = subCategory || product.subCategory;
+        product.volume = volume || product.volume;
+        product.price = price || product.price;
+        product.minQuantity = minQuantity || product.minQuantity;
+        product.discount = discount || product.discount;
+        product.stock = stock || product.stock;
+
+        // Handle image uploads
+        if (req.files && req.files.length > 0) {
+            const imageUrls = await Promise.all(
+                req.files.map(async (file) => {
+                    try {
+                        const result = await cloudinary.uploader.upload(file.path);
+                        return result.secure_url;
+                    } catch (uploadError) {
+                        console.error("Error uploading image:", uploadError);
+                        return null;
+                    }
+                })
+            ).then(results => results.filter(url => url !== null));
+
+            if (imageUrls.length > 0) {
+                product.images = [...product.images, ...imageUrls];
+            }
+        }
+
+        const updatedProduct = await product.save();
+
+        // Create stock update record if stock has changed
+        if (stock && stock !== currentStock) {
+            const stockAdded = stock - currentStock;
+            const stockUpdate = new stockUpdateModel({
+                productId: product._id,
+                productName: product.name,
+                currentStock: currentStock,
+                stockAdded: stockAdded,
+                totalStock: stock
+            });
+            await stockUpdate.save();
+        }
+
+        // Create notification for product update
+        const notification = new Notification({
+            user: req.user.id,
+            message: `Product "${product.name}" has been updated successfully.`
+        });
+        await notification.save();
+
+        res.json(updatedProduct);
+    } catch (error) {
+        console.error("Error updating product:", error);
+        res.status(500).json({ message: "Server error" });
+    }
     }),
 
     deleteProduct: asyncHandler(async (req, res) => {
@@ -227,9 +250,19 @@ const productController = {
             if (!product) {
                 return res.status(404).json({ message: "Product not found" });
             }
+
+            // Store product name before deletion for notification
+            const productName = product.name;
     
             // Delete product
             await Product.deleteOne({ _id: id });
+            
+            // Create notification for product deletion
+            const notification = new Notification({
+                user: req.user.id,
+                message: `Product "${productName}" has been deleted successfully.`
+            });
+            await notification.save();
             
             return res.status(200).json({ message: "Product deleted successfully" });
         } catch (error) {

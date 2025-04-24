@@ -116,6 +116,14 @@ const cartController = {
         if (!cart) {
             return res.status(404).json({ message: "Cart not found" });
         }
+
+        // Create notification for cart clear
+        const notification = new Notification({
+            user: req.user.id,
+            message: "Your cart has been cleared successfully."
+        });
+        await notification.save();
+
         res.status(200).json({ message: "Cart cleared successfully" });
     })
 };

@@ -6,6 +6,7 @@ const orderRouter = express.Router();
 
 orderRouter.post("/add", userAuthentication, orderController.createOrder);
 orderRouter.get("/view", userAuthentication, orderController.getOrdersByUser);
+orderRouter.get("/viewone/:id", userAuthentication, orderController.getOrdersById);
 orderRouter.post("/cancel", userAuthentication, orderController.cancelOrder);
 
 module.exports = orderRouter;

@@ -10,8 +10,9 @@ const paymentRoutes = require("./paymentRoutes");
 const reviewRouter = require("./reviewRoutes");
 const complaintRouter = require("./complaintRoutes");
 const chatRoutes = require("./chatRoutes");
+const notifyRouter = require("./notificationRoutes");
+const stockRouter = require("./stockRoutes");
 const router = express.Router();
-
 
 router.use("/payment", paymentRoutes);
 // Apply JSON parsing middleware
@@ -24,10 +25,11 @@ router.use("/complaint", complaintRouter);
 router.use("/vendor", vendorRoutes);
 router.use("/admin", adminRoutes);
 router.use("/cart", cartRouter);
+router.use("/stock", stockRouter);
 router.use("/review", reviewRouter);
 router.use("/order", orderRouter);
 router.use("/wishlist", wishlistRoutes);
 router.use("/chat", chatRoutes);
-
+router.use("/notify", notifyRouter);
 
 module.exports = router;
