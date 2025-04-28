@@ -3,6 +3,9 @@ const Payment = require("../models/paymentModel");
 const Stripe = require("stripe");
 const Order = require("../models/orderModel");
 const Cart = require("../models/cartModel");
+const Product = require("../models/productModel");
+const Vendor = require("../models/vendorModel");
+const Notification = require("../models/notificationModel");
 require("dotenv").config();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -111,7 +114,16 @@ const paymentController = {
             payment.transactionId = paymentIntent.id;
             await payment.save();
             await order.save();
-    
+            const orderItems = order.items;
+            for (const item of orderItems) {
+                const product = await Product.findById(item.product._id);
+              const vendor=await Vendor.findById(product.vendor)
+              const notify = new Notification({
+                user: vendor.user,
+                message: `Payment received for Order ID: ${order._id}. Item: ${product.name}, Quantity: ${item.quantity}.`,
+              });
+              await notify.save();
+            }
             res.send({ clientSecret: paymentIntent.client_secret });
         } catch (error) {
             console.error("Stripe Error:", error);

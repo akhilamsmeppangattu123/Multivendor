@@ -50,12 +50,20 @@ const orderController = {
       message: `Order placed successfully! Order ID: ${order._id}. ${paymentType === 'card' ? 'Proceed to payment.' : 'It will be delivered in 7 days.'}`
     });
     await notification.save();
+    
 
     // Notify admin and vendor for low stock
     const admin = await User.findOne({ role: "admin" });
 
     for (const item of orderItems) {
       const product = await Product.findById(item.product._id);
+    const vendor=await Vendor.findById(product.vendor)
+    const notify = new Notification({
+      user: vendor.user,
+      message: `New order placed successfully! Order ID: ${order._id}. Item: ${product.name}, Quantity: ${item.quantity}.`,
+    });
+    await notify.save();
+      
       if (product) {
         product.stock = Math.max(0, product.stock - item.quantity);
         product.availability = product.stock > 0;
@@ -63,7 +71,7 @@ const orderController = {
 
         if (product.stock < 5) {
           // Notify vendor about low stock
-          const vendor=await Vendor.findById(product.vendor)
+          
           const vendorNotification = new Notification({
             user: vendor.user,
             message: `Low stock alert: ${product.name} has only ${product.stock} units left.`
@@ -116,42 +124,55 @@ const orderController = {
   // Cancel an order
   cancelOrder: asyncHandler(async (req, res) => {
     const { orderId, reason } = req.body;
-
-    const order = await Order.findById(orderId);
+  
+    // Find the order
+    const order = await Order.findById(orderId).populate("items.product"); // Assuming items is an array of { product: productId, quantity: number }
     if (!order) {
       return res.status(404).json({ message: "Order not found." });
     }
-
+  
+    // Check if order is out for delivery
     if (order.status === "Out for Delivery") {
-      return res.status(400).json({ message: "Order cannot be cancelled once out for delivery." });
+      return res.status(400).json({
+        message: "Order cannot be cancelled once out for delivery.",
+      });
     }
-
+  
+    // Restock items
+    for (const item of order.items) {
+      const product = item.product; // Populated product document
+      if (product) {
+        product.stock = (product.stock || 0) + item.quantity; // Increase stock by the ordered quantity
+        await product.save();
+      }
+    }
+  
     // Create cancellation notification for user
     const cancelNotification = new Notification({
       user: req.user.id,
-      message: `Order #${order._id} has been cancelled. Reason: ${reason}`
+      message: `Order #${order._id} has been cancelled. Reason: ${reason}`,
     });
     await cancelNotification.save();
-
+  
     // Create payment return notification if applicable
     if (order.paymentStatus === "Paid") {
       const paymentNotification = new Notification({
         user: req.user.id,
-        message: `Payment refund initiated for Order #${order._id}. Amount will be credited within 5-7 business days.`
+        message: `Payment refund initiated for Order #${order._id}. Amount will be credited within 5-7 business days.`,
       });
       await paymentNotification.save();
     }
-
+  
     // Update the order status to cancelled
     order.status = "Cancelled";
     order.cancellationReason = reason;
     order.paymentStatus = "Returned";
     console.log(order);
-    
+  
     await order.save();
-    
+  
     res.status(200).json({ message: "Order cancelled successfully", orderId: order._id });
   }),
-};
+}
 
 module.exports = orderController;

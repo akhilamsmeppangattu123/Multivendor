@@ -9,7 +9,7 @@ const complaintController={
     const vendor=await Vendor.findOne({businessName:name})
     const complaint = new Complaint({
       user: req.user.id, 
-      vendor:vendor._id,
+      vendor:vendor.id,
       subject,
       description,
     });
@@ -27,7 +27,7 @@ const complaintController={
 }),
 
 getAllComplaints :asyncHandler(async (req, res) => {
-      const complaints = await Complaint.find().populate('user', 'name').populate("vendor")
+      const complaints = await Complaint.find().populate('user').populate("vendor")
       if(!complaints){
         res.send("No complaints found")
       }
@@ -42,13 +42,13 @@ getAllComplaints :asyncHandler(async (req, res) => {
       res.send(complaints);
   }),
   updateComplaintStatus :asyncHandler(async (req, res) => {
-      const { id, status, response } = req.body;
+      const { id, status } = req.body;
   
       const complaint = await Complaint.findById(id);
       if (!complaint) throw new Error('Complaint not found');
   
       complaint.status = status|| '';
-      complaint.response = response || '';
+      // complaint.response = response || '';
       await complaint.save();
 
       res.send({ message: 'Complaint updated successfully', complaint });

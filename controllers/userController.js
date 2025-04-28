@@ -214,7 +214,24 @@ const userController = {
         await user.save();
 
         res.json({ message: "Password reset successful" });
-    })
+    }),
+    uploadProfilePic: asyncHandler(async (req, res) => {
+        if (!req.file) {
+            return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const user = await User.findById(req.user.id)
+        user.profilePic = req.file.path;
+        await user.save();
+
+        res.json({ 
+            message: "Profile picture updated successfully",
+            imageUrl: req.file.path
+        });
+    }),
+
+
+
 };
 
 module.exports = userController;
